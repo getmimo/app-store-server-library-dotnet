@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace Mimo.AppStoreServerLibrary.Models;
 
 /// <summary>
@@ -52,6 +54,7 @@ public class ResponseBodyV2DecodedPayload
     /// <summary>
     /// A unique identifier for the notification. Use this value to identify a duplicate notification.
     /// </summary>
+    [JsonPropertyName("notificationUUID")]
     public Guid NotificationUuid { get; set; }
 }
 
