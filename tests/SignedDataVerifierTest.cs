@@ -60,6 +60,7 @@ public class SignedDataVerifierTest
         Assert.IsType<ResponseBodyV2DecodedPayload>(result);
         Assert.NotNull(result);
         Assert.Equal("TEST", result.NotificationType);
+        Assert.NotEqual(result.NotificationUuid, Guid.Empty);
     }
 
     [Fact]
