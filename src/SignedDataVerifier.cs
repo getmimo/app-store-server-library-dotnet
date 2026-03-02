@@ -9,12 +9,21 @@ using Mimo.AppStoreServerLibrary.Models;
 namespace Mimo.AppStoreServerLibrary;
 
 public class SignedDataVerifier(
-    byte[] appleRootCertificates,
+    byte[][] appleRootCertificates,
     bool enableOnlineChecks,
     AppStoreEnvironment environment,
     string bundleId
 )
 {
+    // To compatibility with the previous version (<= 0.1.0) of the constructor
+    public SignedDataVerifier(
+        byte[] appleRootCertificate,
+        bool enableOnlineChecks,
+        AppStoreEnvironment environment,
+        string bundleId
+    )
+        : this([appleRootCertificate], enableOnlineChecks, environment, bundleId) { }
+
     // It's recommended to reuse the JsonSerializerOptions instance.
     // https://learn.microsoft.com/en-us/dotnet/standard/serialization/system-text-json/configure-options?pivots=dotnet-8-0#reuse-jsonserializeroptions-instances
     private readonly JsonSerializerOptions jsonSerializerOptions = new()
@@ -198,9 +207,6 @@ public class SignedDataVerifier(
     {
         var chain = new X509Chain();
 
-        // Apple root intermediate certificate https://www.apple.com/certificateauthority/AppleRootCA-G3.cer
-        var rootCertificate = new X509Certificate2(appleRootCertificates);
-
         // Configure the chain to check for certificate revocation online.
         // Online check can result in a longer delay while the certificate authority is contacted.
         // It's still unclear if OCSP is supported by Apple, see following comment in the Java Library code base :
@@ -209,28 +215,31 @@ public class SignedDataVerifier(
         // The default value for DisableOnlineCertificateRevocationCheck is false
         chain.ChainPolicy.RevocationMode = enableOnlineChecks ? X509RevocationMode.Online : X509RevocationMode.NoCheck;
 
-        // By allowing unknown certificates we can avoid adding the Apple root certificate to the trust store
-        // It's one less step to take when setting up the environment (docker file)
-        // Not setting this flag will result in a "Chain validation failed. self-signed certificate - Status : UntrustedRoot" error when the app is running in a container
-        // See following issue for more details about this flag behavior : https://github.com/dotnet/runtime/issues/26449#issue-558387269
-        chain.ChainPolicy.VerificationFlags = X509VerificationFlags.AllowUnknownCertificateAuthority;
+        // We need to set the trust mode to custom root trust so we can add our own root certificate
+        // This is needed because the root certificate is not in the default trust store
+        chain.ChainPolicy.TrustMode = X509ChainTrustMode.CustomRootTrust;
 
-        foreach (X509Certificate2 cert in certificates)
+        // Add the root certificates to the trust store
+        foreach (var rootCert in appleRootCertificates)
         {
-            //Add the intermediate certificates to the extra store so they can be used to build the chain
-            chain.ChainPolicy.ExtraStore.Add(cert);
+            chain.ChainPolicy.CustomTrustStore.Add(new X509Certificate2(rootCert));
         }
 
-        bool isValid = chain.Build(rootCertificate);
+        //Add the intermediate certificates to the extra store so they can be used to build the chain
+        chain.ChainPolicy.ExtraStore.Add(certificates[1]);
+
+        bool isValid = chain.Build(certificates[0]);
 
         if (!isValid)
         {
-            string message = "Chain validation failed. ";
-            foreach (X509ChainStatus chainStatus in chain.ChainStatus)
-            {
-                message += chainStatus.StatusInformation + " - Status : " + chainStatus.Status;
-            }
-
+            var message =
+                "Chain validation failed. "
+                + string.Join(
+                    " -> ",
+                    chain.ChainStatus.Select(chainStatus =>
+                        chainStatus.StatusInformation + " - Status : " + chainStatus.Status
+                    )
+                );
             throw new VerificationException(message);
         }
 
