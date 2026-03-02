@@ -5,7 +5,7 @@
     <Nullable>enable</Nullable>
     <Company>Mimo</Company>
     <PackageId>Mimo.AppStoreServerLibrary</PackageId>
-    <Version>0.1.0</Version>
+    <Version>0.1.1</Version>
     <Authors>Mimo</Authors>
     <Title>Mimo.AppStoreServerLibrary</Title>
     <Description>An unofficial .NET SDK for App Store Server Notifications and API</Description>
