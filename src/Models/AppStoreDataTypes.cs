@@ -201,7 +201,7 @@ public class JwsTransactionDecodedPayload
     /// <summary>
     /// A Boolean value that indicates whether the customer upgraded to another subscription.
     /// </summary>
-    public string? IsUpgraded { get; set; }
+    public bool? IsUpgraded { get; set; }
 
     /// <summary>
     /// The payment mode the subscription offer uses, such as Free Trial, Pay As You Go, or Pay Up Front.
