@@ -15,6 +15,8 @@ public class SignedDataVerifier(
     string bundleId
 )
 {
+    private readonly string _bundleId = bundleId;
+
     // To compatibility with the previous version (<= 0.1.0) of the constructor
     public SignedDataVerifier(
         byte[] appleRootCertificate,
@@ -36,9 +38,13 @@ public class SignedDataVerifier(
     /// See <see href="https://developer.apple.com/documentation/appstoreservernotifications/signedpayload">signedPayload</see>
     /// </summary>
     /// <param name="signedPayload">The payload received by your server</param>
+    /// <param name="bundleId">An optional bundle ID that overrides the instance-level bundle ID for this verification.</param>
     /// <returns>The decoded payload after verification</returns>
     /// <exception cref="VerificationException">Thrown if the data could not be verified</exception>
-    public async Task<ResponseBodyV2DecodedPayload> VerifyAndDecodeNotification(string signedPayload)
+    public async Task<ResponseBodyV2DecodedPayload> VerifyAndDecodeNotification(
+        string signedPayload,
+        string? bundleId = null
+    )
     {
         string payload = await VerifySignedData(signedPayload);
 
@@ -60,10 +66,11 @@ public class SignedDataVerifier(
             );
         }
 
-        if (decodedPayload.Data.BundleId != bundleId)
+        string effectiveBundleId = bundleId ?? _bundleId;
+        if (decodedPayload.Data.BundleId != effectiveBundleId)
         {
             throw new VerificationException(
-                $"BundleId in payload does not match expected bundleId. Expected : {bundleId}, Actual : {decodedPayload.Data.BundleId}"
+                $"BundleId in payload does not match expected bundleId. Expected : {effectiveBundleId}, Actual : {decodedPayload.Data.BundleId}"
             );
         }
 

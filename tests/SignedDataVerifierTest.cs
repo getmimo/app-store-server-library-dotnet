@@ -285,4 +285,52 @@ public class SignedDataVerifierTest
 
         Assert.Contains("Environment in payload does not match expected environment.", exception.Message);
     }
+
+    [Fact]
+    public async Task VerifyAndDecode_WithBundleIdOverride_Success()
+    {
+        string testNotificationPayload = await File.ReadAllTextAsync(
+            "./MockedSignedData/InputFor_VerifyAndDecode_TestNotification_Success.txt"
+        );
+
+        // Construct verifier with a wrong default bundleId
+        var dataVerifier = new SignedDataVerifier(
+            Convert.FromBase64String(RootCaBase64Encoded),
+            false,
+            AppStoreEnvironment.Sandbox,
+            "com.wrong.default"
+        );
+
+        // Override with the correct bundleId — should succeed
+        ResponseBodyV2DecodedPayload result = await dataVerifier.VerifyAndDecodeNotification(
+            testNotificationPayload,
+            bundleId: BundleId
+        );
+
+        Assert.NotNull(result);
+        Assert.Equal("TEST", result.NotificationType);
+    }
+
+    [Fact]
+    public async Task VerifyAndDecode_WithWrongBundleIdOverride_Fails()
+    {
+        string testNotificationPayload = await File.ReadAllTextAsync(
+            "./MockedSignedData/InputFor_VerifyAndDecode_TestNotification_Success.txt"
+        );
+
+        // Construct verifier with the correct default bundleId
+        var dataVerifier = new SignedDataVerifier(
+            Convert.FromBase64String(RootCaBase64Encoded),
+            false,
+            AppStoreEnvironment.Sandbox,
+            BundleId
+        );
+
+        // Override with a wrong bundleId — override takes precedence, so it should fail
+        var exception = await Assert.ThrowsAsync<VerificationException>(
+            () => dataVerifier.VerifyAndDecodeNotification(testNotificationPayload, bundleId: "com.wrong.override")
+        );
+
+        Assert.Contains("BundleId in payload does not match expected bundleId.", exception.Message);
+    }
 }

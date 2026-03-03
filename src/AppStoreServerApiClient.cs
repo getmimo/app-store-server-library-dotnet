@@ -31,28 +31,34 @@ public class AppStoreServerApiClient(
 {
     private static readonly Lazy<HttpClient> DefaultHttpClient = new(() => new HttpClient());
     private readonly HttpClient httpClient = httpClient ?? DefaultHttpClient.Value;
+    private readonly string _bundleId = bundleId;
 
     /// <summary>
     /// Get the statuses for all of a customer’s auto-renewable subscriptions in your app.
     /// </summary>
     /// <param name="transactionId"> The identifier of a transaction that belongs to the customer, and which may be an original transaction identifier</param>
+    /// <param name="bundleId">An optional bundle ID that overrides the instance-level bundle ID for this request.</param>
     /// <returns>The status for all the customer’s subscriptions, organized by their subscription group identifier.</returns>
-    public Task<SubscriptionStatusResponse> GetAllSubscriptionStatuses(string transactionId)
+    public Task<SubscriptionStatusResponse> GetAllSubscriptionStatuses(string transactionId, string? bundleId = null)
     {
         //Call to https://developer.apple.com/documentation/appstoreserverapi/get_all_subscription_statuses
 
         string path = $"/inApps/v1/subscriptions/{transactionId}";
 
-        return this.MakeRequest<SubscriptionStatusResponse>(path, HttpMethod.Get)!;
+        return this.MakeRequest<SubscriptionStatusResponse>(path, HttpMethod.Get, bundleId: bundleId)!;
     }
 
     /// <summary>
     /// Get a list of notifications that the App Store server attempted to send to your server.
     /// </summary>
+    /// <param name="notificationHistoryRequest">The request body containing the notification history query parameters.</param>
+    /// <param name="paginationToken">An optional pagination token for fetching subsequent pages of results.</param>
+    /// <param name="bundleId">An optional bundle ID that overrides the instance-level bundle ID for this request.</param>
     /// <returns>A list of notifications and their attempts</returns>
     public Task<NotificationHistoryResponse?> GetNotificationHistory(
         NotificationHistoryRequest notificationHistoryRequest,
-        string paginationToken = ""
+        string paginationToken = "",
+        string? bundleId = null
     )
     {
         //Call to https://developer.apple.com/documentation/appstoreserverapi/get_notification_history
@@ -68,15 +74,23 @@ public class AppStoreServerApiClient(
             path,
             HttpMethod.Post,
             queryParameters,
-            notificationHistoryRequest
+            notificationHistoryRequest,
+            bundleId: bundleId
         );
     }
 
     /// <summary>
     /// Get a customer’s in-app purchase transaction history for your app.
     /// </summary>
+    /// <param name="transactionId">The identifier of a transaction that belongs to the customer.</param>
+    /// <param name="revisionToken">An optional revision token for paginating through transaction history.</param>
+    /// <param name="bundleId">An optional bundle ID that overrides the instance-level bundle ID for this request.</param>
     /// <returns>A list of transactions associated with the provided Transaction ID</returns>
-    public Task<TransactionHistoryResponse?> GetTransactionHistory(string transactionId, string revisionToken = "")
+    public Task<TransactionHistoryResponse?> GetTransactionHistory(
+        string transactionId,
+        string revisionToken = "",
+        string? bundleId = null
+    )
     {
         //Call to https://developer.apple.com/documentation/appstoreserverapi/get_transaction_history
         Dictionary<string, string> queryParameters = new();
@@ -87,7 +101,7 @@ public class AppStoreServerApiClient(
 
         string path = $"/inApps/v2/history/{transactionId}";
 
-        return this.MakeRequest<TransactionHistoryResponse>(path, HttpMethod.Get, queryParameters);
+        return this.MakeRequest<TransactionHistoryResponse>(path, HttpMethod.Get, queryParameters, bundleId: bundleId);
     }
 
     /// <summary>
@@ -95,51 +109,59 @@ public class AppStoreServerApiClient(
     /// </summary>
     /// <param name="transactionId">The transaction identifier for which you're providing consumption information. You receive this identifier in the CONSUMPTION_REQUEST notification the App Store sends to your server.</param>
     /// <param name="consumptionRequest">The request body containing consumption information.</param>
+    /// <param name="bundleId">An optional bundle ID that overrides the instance-level bundle ID for this request.</param>
     /// <exception cref="ApiException">Thrown when a response indicates the request could not be processed</exception>
     /// <remarks>
     /// See <see href="https://developer.apple.com/documentation/appstoreserverapi/send_consumption_information">Send Consumption Information</see>
     /// </remarks>
-    public Task SendConsumptionData(string transactionId, ConsumptionRequest consumptionRequest)
+    public Task SendConsumptionData(
+        string transactionId,
+        ConsumptionRequest consumptionRequest,
+        string? bundleId = null
+    )
     {
         string path = $"/inApps/v1/transactions/consumption/{transactionId}";
 
-        return this.MakeRequest<object?>(path, HttpMethod.Put, null, consumptionRequest, false);
+        return this.MakeRequest<object?>(path, HttpMethod.Put, null, consumptionRequest, false, bundleId: bundleId);
     }
 
     /// <summary>
     /// Get information about a single transaction for your app.
     /// </summary>
     /// <param name="transactionId">The identifier of a transaction that belongs to the customer, and which may be an original transaction identifier.</param>
+    /// <param name="bundleId">An optional bundle ID that overrides the instance-level bundle ID for this request.</param>
     /// <exception cref="ApiException">Thrown when a response indicates the request could not be processed</exception>
     /// <remarks>
     /// See <see href="https://developer.apple.com/documentation/appstoreserverapi/get-v1-transactions-_transactionid_">Get Transaction Info</see>
     /// </remarks>
-    public Task<TransactionInfoResponse?> GetTransactionInfo(string transactionId)
+    public Task<TransactionInfoResponse?> GetTransactionInfo(string transactionId, string? bundleId = null)
     {
         string path = $"/inApps/v1/transactions/{transactionId}";
 
-        return this.MakeRequest<TransactionInfoResponse>(path, HttpMethod.Get);
+        return this.MakeRequest<TransactionInfoResponse>(path, HttpMethod.Get, bundleId: bundleId);
     }
 
     /// <summary>
     /// Get a customer’s in-app purchases from a receipt using the order ID.
     /// </summary>
     /// <param name="orderId">The order ID for in-app purchases that belong to the customer.</param>
+    /// <param name="bundleId">An optional bundle ID that overrides the instance-level bundle ID for this request.</param>
     /// <exception cref="ApiException">Thrown when a response indicates the request could not be processed</exception>
     /// <remarks>
     /// See <see href="https://developer.apple.com/documentation/appstoreserverapi/get-v1-lookup-_orderid_">Look Up Order ID</see>
     /// </remarks>
-    public Task<OrderLookupResponse> LookUpOrderId(string orderId)
+    public Task<OrderLookupResponse> LookUpOrderId(string orderId, string? bundleId = null)
     {
         string path = $"/inApps/v1/lookup/{orderId}";
 
-        return this.MakeRequest<OrderLookupResponse>(path, HttpMethod.Get)!;
+        return this.MakeRequest<OrderLookupResponse>(path, HttpMethod.Get, bundleId: bundleId)!;
     }
 
     /// <summary>
     /// Returns a signed JWT token that can be used to make requests to the App Store Server API directly.
     /// </summary>
-    public string GetApiToken()
+    /// <param name="bundleId">An optional bundle ID that overrides the instance-level bundle ID for generating the token.</param>
+    public string GetApiToken(string? bundleId = null)
     {
         var prvKey = ECDsa.Create();
         prvKey.ImportFromPem(signingKey);
@@ -152,7 +174,7 @@ public class AppStoreServerApiClient(
             {
                 { "iss", issuerId },
                 { "aud", "appstoreconnect-v1" },
-                { "bid", bundleId },
+                { "bid", bundleId ?? _bundleId },
             },
             TokenType = "JWT",
         };
@@ -169,11 +191,12 @@ public class AppStoreServerApiClient(
         HttpMethod method,
         Dictionary<string, string>? queryParameters = null,
         object? body = null,
-        bool fetchResponse = true
+        bool fetchResponse = true,
+        string? bundleId = null
     )
         where TReturn : class
     {
-        string token = this.GetApiToken();
+        string token = this.GetApiToken(bundleId);
 
         UriBuilder builder = new(environment.BaseUrl) { Path = path };
 

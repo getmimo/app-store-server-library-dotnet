@@ -1,3 +1,4 @@
+using Microsoft.IdentityModel.JsonWebTokens;
 using Mimo.AppStoreServerLibrary;
 using Mimo.AppStoreServerLibrary.Models;
 using RichardSzalay.MockHttp;
@@ -181,5 +182,41 @@ public class AppStoreServerApiClientTest
             transaction => Assert.Equal("signed_transaction_one", transaction),
             transaction => Assert.Equal("signed_transaction_two", transaction)
         );
+    }
+
+    [Fact]
+    public void GetApiToken_WithBundleIdOverride_UsesOverriddenBundleId()
+    {
+        var client = new AppStoreServerApiClient(
+            TestSigningKey,
+            KeyId,
+            IssuerId,
+            BundleId,
+            AppStoreEnvironment.LocalTesting
+        );
+
+        string token = client.GetApiToken(bundleId: "com.override.app");
+
+        var handler = new JsonWebTokenHandler();
+        var jwt = handler.ReadJsonWebToken(token);
+        Assert.Equal("com.override.app", jwt.GetClaim("bid").Value);
+    }
+
+    [Fact]
+    public void GetApiToken_WithoutOverride_UsesConstructorBundleId()
+    {
+        var client = new AppStoreServerApiClient(
+            TestSigningKey,
+            KeyId,
+            IssuerId,
+            BundleId,
+            AppStoreEnvironment.LocalTesting
+        );
+
+        string token = client.GetApiToken();
+
+        var handler = new JsonWebTokenHandler();
+        var jwt = handler.ReadJsonWebToken(token);
+        Assert.Equal(BundleId, jwt.GetClaim("bid").Value);
     }
 }
