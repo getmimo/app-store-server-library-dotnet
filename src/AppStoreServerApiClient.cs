@@ -107,6 +107,22 @@ public class AppStoreServerApiClient(
     }
 
     /// <summary>
+    /// Send consumption information about an in-app purchase to the App Store after your server receives a consumption request notification.
+    /// </summary>
+    /// <param name="transactionId">The transaction identifier for which you're providing consumption information. You receive this identifier in the CONSUMPTION_REQUEST notification the App Store sends to your server's App Store Server Notifications V2 endpoint.</param>
+    /// <param name="consumptionRequest">The request body containing consumption information.</param>
+    /// <exception cref="ApiException">Thrown when a response indicates the request could not be processed</exception>
+    /// <remarks>
+    /// See <see href="https://developer.apple.com/documentation/appstoreserverapi/send-consumption-information">Send Consumption Information</see>
+    /// </remarks>
+    public Task SendConsumptionDataV2(string transactionId, ConsumptionRequestV2 consumptionRequest)
+    {
+        string path = $"/inApps/v2/transactions/consumption/{transactionId}";
+
+        return this.MakeRequest<object?>(path, HttpMethod.Put, null, consumptionRequest, false);
+    }
+
+    /// <summary>
     /// Get information about a single transaction for your app.
     /// </summary>
     /// <param name="transactionId">The identifier of a transaction that belongs to the customer, and which may be an original transaction identifier.</param>

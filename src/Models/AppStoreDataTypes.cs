@@ -42,6 +42,16 @@ public class ResponseBodyV2DecodedPayload
     public DecodedPayloadSummary? Summary { get; set; }
 
     /// <summary>
+    /// The data for an external purchase token notification.
+    /// </summary>
+    public ExternalPurchaseToken? ExternalPurchaseToken { get; set; }
+
+    /// <summary>
+    /// The app metadata and signed app transaction information.
+    /// </summary>
+    public AppData? AppData { get; set; }
+
+    /// <summary>
     /// The App Store Server Notification version number, "2.0".
     /// </summary>
     public string Version { get; set; } = null!;
@@ -113,6 +123,16 @@ public class DecodedPayloadData
     /// Transaction information signed by the App Store, in JSON Web Signature (JWS) format.
     /// </summary>
     public string? SignedTransactionInfo { get; set; }
+
+    /// <summary>
+    /// The status of the auto-renewable subscription at the time the App Store sends the notification.
+    /// </summary>
+    public TransactionsItemSubscriptionStatus? Status { get; set; }
+
+    /// <summary>
+    /// The reason the customer requested the refund.
+    /// </summary>
+    public string? ConsumptionRequestReason { get; set; }
 }
 
 /// <summary>
@@ -134,7 +154,7 @@ public class DecodedPayloadSummary
     /// <summary>
     /// The unique identifier of the app that the notification applies to. This property is available for apps that users download from the App Store. It isn’t present in the sandbox environment.
     /// </summary>
-    public string AppAppleId { get; set; } = null!;
+    public long? AppAppleId { get; set; }
 
     /// <summary>
     /// The bundle identifier of the app.
@@ -149,17 +169,17 @@ public class DecodedPayloadSummary
     /// <summary>
     /// A list of country codes that limits the App Store’s attempt to apply the subscription-renewal-date extension. If this list isn’t present, the subscription-renewal-date extension applies to all storefronts.
     /// </summary>
-    public string StorefrontCountryCodes { get; set; } = null!;
+    public string[]? StorefrontCountryCodes { get; set; }
 
     /// <summary>
     /// The final count of subscriptions that fail to receive a subscription-renewal-date extension.
     /// </summary>
-    public string FailedCount { get; set; } = null!;
+    public long? FailedCount { get; set; }
 
     /// <summary>
     /// The final count of subscriptions that successfully receive a subscription-renewal-date extension.
     /// </summary>
-    public string SucceededCount { get; set; } = null!;
+    public long? SucceededCount { get; set; }
 }
 
 /// <summary>
@@ -216,7 +236,7 @@ public class JwsTransactionDecodedPayload
     /// <summary>
     /// A value that represents the promotional offer type.
     /// </summary>
-    public int OfferType { get; set; }
+    public OfferType OfferType { get; set; }
 
     /// <summary>
     /// The UNIX time, in milliseconds, that represents the purchase date of the original transaction identifier.
@@ -257,11 +277,8 @@ public class JwsTransactionDecodedPayload
 
     /// <summary>
     /// The reason that the App Store refunded the transaction or revoked it from Family Sharing.
-    /// Values :
-    /// 0 : The App Store refunded the transaction on behalf of the customer for other reasons, for example, an accidental purchase.
-    /// 1 : The App Store refunded the transaction on behalf of the customer due to an actual or perceived issue within your app.
     /// </summary>
-    public int? RevocationReason { get; set; }
+    public RevocationReason? RevocationReason { get; set; }
 
     /// <summary>
     /// The UNIX time, in milliseconds, that the App Store signed the JSON Web Signature (JWS) data.
@@ -302,6 +319,26 @@ public class JwsTransactionDecodedPayload
     /// The unique identifier of subscription purchase events across devices, including subscription renewals.
     /// </summary>
     public string? WebOrderLineItemId { get; set; }
+
+    /// <summary>
+    /// The unique identifier of the app transaction.
+    /// </summary>
+    public string? AppTransactionId { get; set; }
+
+    /// <summary>
+    /// The duration of the offer period.
+    /// </summary>
+    public string? OfferPeriod { get; set; }
+
+    /// <summary>
+    /// The type of revocation, such as a full refund or prorated refund.
+    /// </summary>
+    public string? RevocationType { get; set; }
+
+    /// <summary>
+    /// The percentage of the subscription period that has elapsed at the time of the revocation.
+    /// </summary>
+    public long? RevocationPercentage { get; set; }
 }
 
 /// <summary>
@@ -317,10 +354,8 @@ public class JWSRenewalInfoDecodedPayload
 
     /// <summary>
     /// The renewal status for an auto-renewable subscription.
-    /// 0 : Automatic renewal is off.
-    /// 1 : Automatic renewal is on.
     /// </summary>
-    public int AutoRenewStatus { get; set; }
+    public AutoRenewStatus AutoRenewStatus { get; set; }
 
     /// <summary>
     /// The server environment, either sandbox or production.
@@ -329,14 +364,8 @@ public class JWSRenewalInfoDecodedPayload
 
     /// <summary>
     /// The reason a subscription expired.
-    /// Values could be :
-    /// 1 : The customer canceled their subscription.
-    /// 2 : Billing error; for example, the customer’s payment information is no longer valid.
-    /// 3 : The customer didn’t consent to an auto-renewable subscription price increase that requires customer consent, allowing the subscription to expire.
-    /// 4 : The product wasn’t available for purchase at the time of renewal.
-    /// 5 : The subscription expired for some other reason.
     /// </summary>
-    public int? ExpirationIntent { get; set; }
+    public ExpirationIntent? ExpirationIntent { get; set; }
 
     /// <summary>
     /// The time when the billing grace period for subscription renewals expires.
@@ -356,7 +385,7 @@ public class JWSRenewalInfoDecodedPayload
     /// <summary>
     /// The type of subscription offer.
     /// </summary>
-    public int OfferType { get; set; }
+    public OfferType OfferType { get; set; }
 
     /// <summary>
     /// The original transaction identifier of a purchase.
@@ -366,7 +395,7 @@ public class JWSRenewalInfoDecodedPayload
     /// <summary>
     /// The status that indicates whether the auto-renewable subscription is subject to a price increase.
     /// </summary>
-    public int PriceIncreaseStatus { get; set; }
+    public PriceIncreaseStatus PriceIncreaseStatus { get; set; }
 
     /// <summary>
     /// The product identifier of the in-app purchase.
@@ -387,6 +416,41 @@ public class JWSRenewalInfoDecodedPayload
     /// The UNIX time, in milliseconds, that the App Store signed the JSON Web Signature (JWS) data.
     /// </summary>
     public long SignedDate { get; set; }
+
+    /// <summary>
+    /// The three-letter ISO 4217 currency code for the renewal price of the auto-renewable subscription.
+    /// </summary>
+    public string? Currency { get; set; }
+
+    /// <summary>
+    /// The renewal price, in milliunits, of the auto-renewable subscription that renews at the next billing period.
+    /// </summary>
+    public long? RenewalPrice { get; set; }
+
+    /// <summary>
+    /// The payment mode of the discount offer.
+    /// </summary>
+    public string? OfferDiscountType { get; set; }
+
+    /// <summary>
+    /// An array of win-back offer identifiers that a customer is eligible to redeem, which sorts the identifiers to present the better offers first.
+    /// </summary>
+    public string[]? EligibleWinBackOfferIds { get; set; }
+
+    /// <summary>
+    /// A UUID you create at the time of purchase that associates the transaction with a customer on your own service.
+    /// </summary>
+    public string? AppAccountToken { get; set; }
+
+    /// <summary>
+    /// The unique identifier of the app transaction.
+    /// </summary>
+    public string? AppTransactionId { get; set; }
+
+    /// <summary>
+    /// The duration of the offer period.
+    /// </summary>
+    public string? OfferPeriod { get; set; }
 }
 
 /// <summary>
@@ -598,7 +662,7 @@ public class SendAttemptItem
 /// </summary>
 public class TransactionHistoryResponse
 {
-    public string AppAppleId { get; set; } = null!;
+    public long? AppAppleId { get; set; }
     public string BundleId { get; set; } = null!;
     public string Environment { get; set; } = null!;
     public bool HasMore { get; set; }
@@ -644,6 +708,60 @@ public enum OrderLookupStatus
 /// </summary>
 public class ErrorResponse
 {
-    public int ErrorCode { get; set; } = 0;
+    public ApiErrorCode ErrorCode { get; set; }
     public string ErrorMessage { get; set; } = null!;
+}
+
+/// <summary>
+/// The payload data for an external purchase token notification.
+/// https://developer.apple.com/documentation/appstoreservernotifications/externalpurchasetoken
+/// </summary>
+public class ExternalPurchaseToken
+{
+    /// <summary>
+    /// The identifier of the external purchase.
+    /// </summary>
+    public string? ExternalPurchaseId { get; set; }
+
+    /// <summary>
+    /// The UNIX time, in milliseconds, when the system created the token.
+    /// </summary>
+    public long? TokenCreationDate { get; set; }
+
+    /// <summary>
+    /// The unique identifier of the app.
+    /// </summary>
+    public long? AppAppleId { get; set; }
+
+    /// <summary>
+    /// The bundle identifier of the app.
+    /// </summary>
+    public string? BundleId { get; set; }
+}
+
+/// <summary>
+/// The app metadata and signed app transaction information.
+/// https://developer.apple.com/documentation/appstoreservernotifications/appdata
+/// </summary>
+public class AppData
+{
+    /// <summary>
+    /// The unique identifier of the app.
+    /// </summary>
+    public long? AppAppleId { get; set; }
+
+    /// <summary>
+    /// The bundle identifier of the app.
+    /// </summary>
+    public string? BundleId { get; set; }
+
+    /// <summary>
+    /// The server environment, either sandbox or production.
+    /// </summary>
+    public string? Environment { get; set; }
+
+    /// <summary>
+    /// The signed app transaction information.
+    /// </summary>
+    public string? SignedAppTransactionInfo { get; set; }
 }

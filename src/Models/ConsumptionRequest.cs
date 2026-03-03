@@ -3,6 +3,42 @@ using System.Text.Json.Serialization;
 namespace Mimo.AppStoreServerLibrary.Models;
 
 /// <summary>
+/// The request body containing consumption information (v2, string-based fields).
+/// </summary>
+public record ConsumptionRequestV2
+{
+    /// <summary>
+    /// Whether the customer consented to the consumption information being shared.
+    /// </summary>
+    [JsonPropertyName("customerConsented")]
+    public required bool CustomerConsented { get; set; }
+
+    /// <summary>
+    /// A value between 0 and 100 that represents the percentage of the in-app purchase content the customer consumed.
+    /// </summary>
+    [JsonPropertyName("consumptionPercentage")]
+    public int? ConsumptionPercentage { get; set; }
+
+    /// <summary>
+    /// The delivery status of the consumable in-app purchase.
+    /// </summary>
+    [JsonPropertyName("deliveryStatus")]
+    public required string DeliveryStatus { get; set; }
+
+    /// <summary>
+    /// Your preference for handling the refund.
+    /// </summary>
+    [JsonPropertyName("refundPreference")]
+    public string? RefundPreference { get; set; }
+
+    /// <summary>
+    /// Whether sample content was provided to the user.
+    /// </summary>
+    [JsonPropertyName("sampleContentProvided")]
+    public required bool SampleContentProvided { get; set; }
+}
+
+/// <summary>
 /// Response for a consumption request notification, used by Apple to determine whether to grant the user the refund or decline it.
 /// </summary>
 public record ConsumptionRequest
@@ -19,7 +55,7 @@ public record ConsumptionRequest
     /// 7: >365 days
     /// </summary>
     [JsonPropertyName("accountTenure")]
-    public required int AccountTenure { get; set; }
+    public required AccountTenure AccountTenure { get; set; }
 
     /// <summary>
     /// The app account token associated with the user's subscription
@@ -35,7 +71,7 @@ public record ConsumptionRequest
     /// 3: Fully consumed
     /// </summary>
     [JsonPropertyName("consumptionStatus")]
-    public required int ConsumptionStatus { get; set; }
+    public required ConsumptionStatus ConsumptionStatus { get; set; }
 
     /// <summary>
     /// Whether the customer consented to the consumption information being shared
@@ -53,7 +89,7 @@ public record ConsumptionRequest
     /// 5: Not delivered for other reasons
     /// </summary>
     [JsonPropertyName("deliveryStatus")]
-    public required int DeliveryStatus { get; set; }
+    public required DeliveryStatusV1 DeliveryStatus { get; set; }
 
     /// <summary>
     /// The dollar amount of in-app purchases made across all platforms:
@@ -67,7 +103,7 @@ public record ConsumptionRequest
     /// 7: Over $2000
     /// </summary>
     [JsonPropertyName("lifetimeDollarsPurchased")]
-    public required int LifetimeDollarsPurchased { get; set; }
+    public required LifetimeDollarsPurchased LifetimeDollarsPurchased { get; set; }
 
     /// <summary>
     /// The dollar amount of refunds the customer has received in your app, since purchasing the app, across all platforms:
@@ -81,7 +117,7 @@ public record ConsumptionRequest
     /// 7: Over $2000
     /// </summary>
     [JsonPropertyName("lifetimeDollarsRefunded")]
-    public required int LifetimeDollarsRefunded { get; set; }
+    public required LifetimeDollarsRefunded LifetimeDollarsRefunded { get; set; }
 
     /// <summary>
     /// The platform the app is running on:
@@ -90,7 +126,7 @@ public record ConsumptionRequest
     /// 2: Non-Apple platform
     /// </summary>
     [JsonPropertyName("platform")]
-    public required int Platform { get; set; }
+    public required Platform Platform { get; set; }
 
     /// <summary>
     /// The user's engagement time with the app:
@@ -104,7 +140,7 @@ public record ConsumptionRequest
     /// 7: Over 16 days
     /// </summary>
     [JsonPropertyName("playTime")]
-    public required int PlayTime { get; set; }
+    public required PlayTime PlayTime { get; set; }
 
     /// <summary>
     /// Your preference for handling the refund:
@@ -114,7 +150,7 @@ public record ConsumptionRequest
     /// 3: No preference
     /// </summary>
     [JsonPropertyName("refundPreference")]
-    public required int RefundPreference { get; set; }
+    public required RefundPreferenceV1 RefundPreference { get; set; }
 
     /// <summary>
     /// Whether sample content was provided to the user
@@ -131,5 +167,5 @@ public record ConsumptionRequest
     /// 4: Limited access
     /// </summary>
     [JsonPropertyName("userStatus")]
-    public required int UserStatus { get; set; }
+    public required UserStatus UserStatus { get; set; }
 }

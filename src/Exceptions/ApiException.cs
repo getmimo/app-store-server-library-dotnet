@@ -11,7 +11,7 @@ public class ApiException(
 {
     public HttpStatusCode? HttpStatusCode { get; } = httpStatusCode;
 
-    public int? ApiErrorCode { get; } = errorResponse?.ErrorCode;
+    public ApiErrorCode? ApiErrorCode { get; } = errorResponse?.ErrorCode;
 
     public string? ApiErrorMessage { get; } = errorResponse?.ErrorMessage;
 

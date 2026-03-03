@@ -121,18 +121,18 @@ public class AppStoreServerApiClientTest
             "123456",
             new ConsumptionRequest
             {
-                AccountTenure = 1,
+                AccountTenure = AccountTenure.ZeroToThreeDays,
                 AppAccountToken = "test-token",
-                ConsumptionStatus = 1,
+                ConsumptionStatus = ConsumptionStatus.NotConsumed,
                 CustomerConsented = true,
-                DeliveryStatus = 0,
-                LifetimeDollarsPurchased = 1,
-                LifetimeDollarsRefunded = 1,
-                Platform = 1,
-                PlayTime = 1,
-                RefundPreference = 1,
+                DeliveryStatus = DeliveryStatusV1.DeliveredAndWorkingProperly,
+                LifetimeDollarsPurchased = LifetimeDollarsPurchased.ZeroDollars,
+                LifetimeDollarsRefunded = LifetimeDollarsRefunded.ZeroDollars,
+                Platform = Platform.Apple,
+                PlayTime = PlayTime.ZeroToFiveMinutes,
+                RefundPreference = RefundPreferenceV1.PreferGrant,
                 SampleContentProvided = false,
-                UserStatus = 1,
+                UserStatus = UserStatus.Active,
             }
         );
     }
