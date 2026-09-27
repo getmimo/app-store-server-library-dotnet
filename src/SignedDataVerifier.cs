@@ -24,13 +24,6 @@ public class SignedDataVerifier(
     )
         : this([appleRootCertificate], enableOnlineChecks, environment, bundleId) { }
 
-    // It's recommended to reuse the JsonSerializerOptions instance.
-    // https://learn.microsoft.com/en-us/dotnet/standard/serialization/system-text-json/configure-options?pivots=dotnet-8-0#reuse-jsonserializeroptions-instances
-    private readonly JsonSerializerOptions jsonSerializerOptions = new()
-    {
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-    };
-
     /// <summary>
     /// Verifies and decodes an App Store Server Notification signedPayload.
     /// See <see href="https://developer.apple.com/documentation/appstoreservernotifications/signedpayload">signedPayload</see>
@@ -46,7 +39,10 @@ public class SignedDataVerifier(
 
         try
         {
-            decodedPayload = JsonSerializer.Deserialize<ResponseBodyV2DecodedPayload>(payload, jsonSerializerOptions)!;
+            decodedPayload = JsonSerializer.Deserialize(
+                payload,
+                AppStoreJsonContext.Default.ResponseBodyV2DecodedPayload
+            )!;
         }
         catch
         {
@@ -83,7 +79,7 @@ public class SignedDataVerifier(
 
         try
         {
-            return JsonSerializer.Deserialize<JwsTransactionDecodedPayload>(payload, jsonSerializerOptions)!;
+            return JsonSerializer.Deserialize(payload, AppStoreJsonContext.Default.JwsTransactionDecodedPayload)!;
         }
         catch
         {
@@ -104,7 +100,7 @@ public class SignedDataVerifier(
 
         try
         {
-            return JsonSerializer.Deserialize<JWSRenewalInfoDecodedPayload>(payload, jsonSerializerOptions)!;
+            return JsonSerializer.Deserialize(payload, AppStoreJsonContext.Default.JWSRenewalInfoDecodedPayload)!;
         }
         catch
         {
@@ -132,7 +128,7 @@ public class SignedDataVerifier(
         string headerJson = Encoding.UTF8.GetString(Base64UrlEncoder.DecodeBytes(parts[0]));
         string payloadJson = Encoding.UTF8.GetString(Base64UrlEncoder.DecodeBytes(parts[1]));
 
-        var header = JsonSerializer.Deserialize<JWSDecodedHeader>(headerJson, jsonSerializerOptions);
+        var header = JsonSerializer.Deserialize(headerJson, AppStoreJsonContext.Default.JWSDecodedHeader);
 
         //Check if Environment is local testing, in this case data may not be signed by the App Store, and verification should be skipped
         if (environment == AppStoreEnvironment.LocalTesting)

@@ -85,11 +85,22 @@ public class AppStoreServerApiClientTest
     {
         var mockHttp = new MockHttpMessageHandler();
         mockHttp
-            .When($"https://local-testing-base-url/inApps/v1/notifications/history")
+            .When(HttpMethod.Post, $"https://local-testing-base-url/inApps/v1/notifications/history")
+            .WithContent(
+                """{"startDate":1,"endDate":2,"notificationType":"TEST","notificationSubType":null,"onlyFailures":true,"transactionId":null}"""
+            )
             .Respond("application/json", "{\"notificationHistory\":[]}");
 
         AppStoreServerApiClient client = GetAppStoreServerApiClient(mockHttp);
-        NotificationHistoryResponse? response = await client.GetNotificationHistory(new NotificationHistoryRequest());
+        NotificationHistoryResponse? response = await client.GetNotificationHistory(
+            new NotificationHistoryRequest
+            {
+                StartDate = 1,
+                EndDate = 2,
+                NotificationType = "TEST",
+                OnlyFailures = true,
+            }
+        );
 
         Assert.NotNull(response);
     }
@@ -113,7 +124,10 @@ public class AppStoreServerApiClientTest
     {
         var mockHttp = new MockHttpMessageHandler();
         mockHttp
-            .When($"https://local-testing-base-url/inApps/v1/transactions/consumption/123456")
+            .When(HttpMethod.Put, $"https://local-testing-base-url/inApps/v1/transactions/consumption/123456")
+            .WithContent(
+                """{"accountTenure":1,"appAccountToken":"test-token","consumptionStatus":1,"customerConsented":true,"deliveryStatus":0,"lifetimeDollarsPurchased":1,"lifetimeDollarsRefunded":1,"platform":1,"playTime":1,"refundPreference":1,"sampleContentProvided":false,"userStatus":1}"""
+            )
             .Respond(System.Net.HttpStatusCode.OK);
 
         AppStoreServerApiClient client = GetAppStoreServerApiClient(mockHttp);
