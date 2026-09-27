@@ -243,6 +243,20 @@ public class SignedDataVerifier(
             throw new VerificationException(message);
         }
 
+        // Marker extensions identifying App Store signing certificates, as checked by Apple's libraries
+        const string leafOid = "1.2.840.113635.100.6.11.1";
+        const string intermediateOid = "1.2.840.113635.100.6.2.1";
+
+        if (chain.ChainElements.Count != 3 || chain.ChainElements[0].Certificate.Extensions[leafOid] == null)
+        {
+            throw new VerificationException($"OID {leafOid} was not found on the signing certificate");
+        }
+
+        if (chain.ChainElements[1].Certificate.Extensions[intermediateOid] == null)
+        {
+            throw new VerificationException($"OID {intermediateOid} was not found on the intermediate certificate");
+        }
+
         return isValid;
     }
 }
