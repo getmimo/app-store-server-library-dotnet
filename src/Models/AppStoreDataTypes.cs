@@ -34,7 +34,7 @@ public class ResponseBodyV2DecodedPayload
     /// The object that contains the app metadata and signed renewal and transaction information.
     /// The data and summary fields are mutually exclusive. The payload contains one of the fields, but not both.
     /// </summary>
-    public DecodedPayloadData Data { get; set; } = null!;
+    public DecodedPayloadData? Data { get; set; }
 
     /// <summary>
     /// The summary data that appears when the App Store server completes your request to extend a subscription renewal date for eligible subscribers.
@@ -134,7 +134,7 @@ public class DecodedPayloadSummary
     /// <summary>
     /// The unique identifier of the app that the notification applies to. This property is available for apps that users download from the App Store. It isn’t present in the sandbox environment.
     /// </summary>
-    public string AppAppleId { get; set; } = null!;
+    public long? AppAppleId { get; set; }
 
     /// <summary>
     /// The bundle identifier of the app.
@@ -149,17 +149,17 @@ public class DecodedPayloadSummary
     /// <summary>
     /// A list of country codes that limits the App Store’s attempt to apply the subscription-renewal-date extension. If this list isn’t present, the subscription-renewal-date extension applies to all storefronts.
     /// </summary>
-    public string StorefrontCountryCodes { get; set; } = null!;
+    public string[]? StorefrontCountryCodes { get; set; }
 
     /// <summary>
     /// The final count of subscriptions that fail to receive a subscription-renewal-date extension.
     /// </summary>
-    public string FailedCount { get; set; } = null!;
+    public long FailedCount { get; set; }
 
     /// <summary>
     /// The final count of subscriptions that successfully receive a subscription-renewal-date extension.
     /// </summary>
-    public string SucceededCount { get; set; } = null!;
+    public long SucceededCount { get; set; }
 }
 
 /// <summary>

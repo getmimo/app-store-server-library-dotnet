@@ -24,13 +24,6 @@ public class SignedDataVerifier(
     )
         : this([appleRootCertificate], enableOnlineChecks, environment, bundleId) { }
 
-    // It's recommended to reuse the JsonSerializerOptions instance.
-    // https://learn.microsoft.com/en-us/dotnet/standard/serialization/system-text-json/configure-options?pivots=dotnet-8-0#reuse-jsonserializeroptions-instances
-    private readonly JsonSerializerOptions jsonSerializerOptions = new()
-    {
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-    };
-
     /// <summary>
     /// Verifies and decodes an App Store Server Notification signedPayload.
     /// See <see href="https://developer.apple.com/documentation/appstoreservernotifications/signedpayload">signedPayload</see>
@@ -46,26 +39,25 @@ public class SignedDataVerifier(
 
         try
         {
-            decodedPayload = JsonSerializer.Deserialize<ResponseBodyV2DecodedPayload>(payload, jsonSerializerOptions)!;
+            decodedPayload = JsonSerializer.Deserialize(
+                payload,
+                AppStoreJsonContext.Default.ResponseBodyV2DecodedPayload
+            )!;
         }
-        catch
+        catch (Exception e)
         {
-            throw new VerificationException($"Error deserializing notification payload. Payload : {payload}");
+            throw new VerificationException($"Error deserializing notification payload. Payload : {payload}", e);
         }
 
-        if (decodedPayload.Data.Environment != environment.Name)
+        (string payloadEnvironment, string payloadBundleId) = decodedPayload switch
         {
-            throw new VerificationException(
-                $"Environment in payload does not match expected environment. Expected : {environment}, Actual : {decodedPayload.Data.Environment}"
-            );
-        }
+            { Data: { } data } => (data.Environment, data.BundleId),
+            { Summary: { } summary } => (summary.Environment, summary.BundleId),
+            _ => throw new VerificationException("Notification payload has neither data nor summary"),
+        };
 
-        if (decodedPayload.Data.BundleId != bundleId)
-        {
-            throw new VerificationException(
-                $"BundleId in payload does not match expected bundleId. Expected : {bundleId}, Actual : {decodedPayload.Data.BundleId}"
-            );
-        }
+        ValidateEnvironment(payloadEnvironment);
+        ValidateBundleId(payloadBundleId);
 
         return decodedPayload;
     }
@@ -81,14 +73,23 @@ public class SignedDataVerifier(
     {
         string payload = await VerifySignedData(signedPayload);
 
+        JwsTransactionDecodedPayload transaction;
         try
         {
-            return JsonSerializer.Deserialize<JwsTransactionDecodedPayload>(payload, jsonSerializerOptions)!;
+            transaction = JsonSerializer.Deserialize(
+                payload,
+                AppStoreJsonContext.Default.JwsTransactionDecodedPayload
+            )!;
         }
-        catch
+        catch (Exception e)
         {
-            throw new VerificationException($"Error deserializing transaction payload. Payload : {payload}");
+            throw new VerificationException($"Error deserializing transaction payload. Payload : {payload}", e);
         }
+
+        ValidateEnvironment(transaction.Environment);
+        ValidateBundleId(transaction.BundleId);
+
+        return transaction;
     }
 
     /// <summary>
@@ -102,14 +103,22 @@ public class SignedDataVerifier(
     {
         string payload = await VerifySignedData(signedPayload);
 
+        JWSRenewalInfoDecodedPayload renewalInfo;
         try
         {
-            return JsonSerializer.Deserialize<JWSRenewalInfoDecodedPayload>(payload, jsonSerializerOptions)!;
+            renewalInfo = JsonSerializer.Deserialize(
+                payload,
+                AppStoreJsonContext.Default.JWSRenewalInfoDecodedPayload
+            )!;
         }
-        catch
+        catch (Exception e)
         {
-            throw new VerificationException($"Error deserializing renewal info payload. Payload : {payload}");
+            throw new VerificationException($"Error deserializing renewal info payload. Payload : {payload}", e);
         }
+
+        ValidateEnvironment(renewalInfo.Environment);
+
+        return renewalInfo;
     }
 
     private async Task<string> VerifySignedData(string signedPayload)
@@ -129,10 +138,18 @@ public class SignedDataVerifier(
 
         // Decode the header and the payload , which are the 1st and 2nd parts of the payload
         // We do not use a JsonWebToken to parse the token because it does not expose the x5c claim that we need to verify the signature
-        string headerJson = Encoding.UTF8.GetString(Base64UrlEncoder.DecodeBytes(parts[0]));
-        string payloadJson = Encoding.UTF8.GetString(Base64UrlEncoder.DecodeBytes(parts[1]));
-
-        var header = JsonSerializer.Deserialize<JWSDecodedHeader>(headerJson, jsonSerializerOptions);
+        string payloadJson;
+        JWSDecodedHeader? header;
+        try
+        {
+            string headerJson = Encoding.UTF8.GetString(Base64UrlEncoder.DecodeBytes(parts[0]));
+            payloadJson = Encoding.UTF8.GetString(Base64UrlEncoder.DecodeBytes(parts[1]));
+            header = JsonSerializer.Deserialize(headerJson, AppStoreJsonContext.Default.JWSDecodedHeader);
+        }
+        catch (Exception e)
+        {
+            throw new VerificationException("Payload header or body could not be decoded", e);
+        }
 
         //Check if Environment is local testing, in this case data may not be signed by the App Store, and verification should be skipped
         if (environment == AppStoreEnvironment.LocalTesting)
@@ -154,14 +171,24 @@ public class SignedDataVerifier(
         //See Apple implementation for Java : https://github.com/apple/app-store-server-library-java/blob/main/src/main/java/com/apple/itunes/storekit/verification/ChainVerifier.java#L70C14-L71C90
         //or Node : https://github.com/apple/app-store-server-library-node/blob/main/jws_verification.ts#L185
         X509Certificate2Collection col = new();
-        foreach (string c in header.x5c[..2])
+        try
         {
-            byte[] bytes = Convert.FromBase64String(c);
-            col.Add(new X509Certificate2(bytes));
+            foreach (string c in header.x5c[..2])
+            {
+                byte[] bytes = Convert.FromBase64String(c);
+                col.Add(new X509Certificate2(bytes));
+            }
+        }
+        catch (Exception e)
+        {
+            throw new VerificationException("x5c certificates could not be decoded", e);
         }
 
         //As the header contains a x5c parameter we need to check for the certificate chain
-        bool certChainIsValid = this.CheckCertificateChain(col);
+        // As Apple's libraries do, validate offline at the time the payload was signed
+        DateTime verificationTime = enableOnlineChecks ? DateTime.Now : ReadSignedDate(payloadJson) ?? DateTime.Now;
+
+        bool certChainIsValid = this.CheckCertificateChain(col, verificationTime);
 
         if (!certChainIsValid)
         {
@@ -170,7 +197,7 @@ public class SignedDataVerifier(
 
         //We now need to verify the signature using the leaf (first) certificate of the x5c parameter.
         //This is done by retrieving it's public key and calling the JWT library to verify the signature
-        var leafCert = new X509Certificate2(Convert.FromBase64String(header.x5c[0]));
+        var leafCert = col[0];
 
         var securityTokenHandler = new JsonWebTokenHandler();
         var leafPublicKey = new ECDsaSecurityKey(leafCert.GetECDsaPublicKey());
@@ -191,7 +218,10 @@ public class SignedDataVerifier(
 
         if (!result.IsValid)
         {
-            throw new VerificationException($"Payload signature could not be verified : {result.Exception.Message}");
+            throw new VerificationException(
+                $"Payload signature could not be verified : {result.Exception.Message}",
+                result.Exception
+            );
         }
 
         return payloadJson;
@@ -203,7 +233,7 @@ public class SignedDataVerifier(
     /// Also see following discussion on Apple forum for better explanations : https://forums.developer.apple.com/forums/thread/693351
     /// </summary>
     /// <returns>If the certificate chain is valid</returns>
-    private bool CheckCertificateChain(X509Certificate2Collection certificates)
+    private bool CheckCertificateChain(X509Certificate2Collection certificates, DateTime verificationTime)
     {
         var chain = new X509Chain();
 
@@ -214,6 +244,7 @@ public class SignedDataVerifier(
         // Also an explanation of the use of OCSP can be found here : https://forums.developer.apple.com/forums/thread/693351
         // The default value for DisableOnlineCertificateRevocationCheck is false
         chain.ChainPolicy.RevocationMode = enableOnlineChecks ? X509RevocationMode.Online : X509RevocationMode.NoCheck;
+        chain.ChainPolicy.VerificationTime = verificationTime;
 
         // We need to set the trust mode to custom root trust so we can add our own root certificate
         // This is needed because the root certificate is not in the default trust store
@@ -243,6 +274,73 @@ public class SignedDataVerifier(
             throw new VerificationException(message);
         }
 
+        // Marker extensions identifying App Store signing certificates, as checked by Apple's libraries
+        const string leafOid = "1.2.840.113635.100.6.11.1";
+        const string intermediateOid = "1.2.840.113635.100.6.2.1";
+
+        if (chain.ChainElements.Count != 3)
+        {
+            throw new VerificationException($"Certificate chain has {chain.ChainElements.Count} elements, expected 3");
+        }
+
+        if (chain.ChainElements[0].Certificate.Extensions[leafOid] == null)
+        {
+            throw new VerificationException($"OID {leafOid} was not found on the signing certificate");
+        }
+
+        if (chain.ChainElements[1].Certificate.Extensions[intermediateOid] == null)
+        {
+            throw new VerificationException($"OID {intermediateOid} was not found on the intermediate certificate");
+        }
+
         return isValid;
+    }
+
+    private static DateTime? ReadSignedDate(string payloadJson)
+    {
+        long milliseconds;
+        try
+        {
+            using JsonDocument document = JsonDocument.Parse(payloadJson);
+            if (
+                document.RootElement.ValueKind != JsonValueKind.Object
+                || !document.RootElement.TryGetProperty("signedDate", out JsonElement signedDate)
+                || !signedDate.TryGetInt64(out milliseconds)
+            )
+            {
+                return null;
+            }
+        }
+        catch (JsonException e)
+        {
+            throw new VerificationException("Payload could not be decoded", e);
+        }
+
+        if (milliseconds < 0 || milliseconds > DateTimeOffset.MaxValue.ToUnixTimeMilliseconds())
+        {
+            throw new VerificationException($"signedDate {milliseconds} is out of range");
+        }
+
+        return DateTimeOffset.FromUnixTimeMilliseconds(milliseconds).UtcDateTime;
+    }
+
+    private void ValidateEnvironment(string? payloadEnvironment)
+    {
+        if (payloadEnvironment != environment.Name)
+        {
+            throw new VerificationException(
+                $"Environment in payload does not match expected environment. Expected : {environment}, Actual : {payloadEnvironment}"
+            );
+        }
+    }
+
+    private void ValidateBundleId(string? payloadBundleId)
+    {
+        if (payloadBundleId != bundleId)
+        {
+            throw new VerificationException(
+                $"BundleId in payload does not match expected bundleId. Expected : {bundleId}, Actual : {payloadBundleId}"
+            );
+        }
     }
 }

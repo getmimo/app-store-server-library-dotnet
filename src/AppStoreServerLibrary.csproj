@@ -18,6 +18,7 @@
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <AssemblyName>Mimo.AppStoreServerLibrary</AssemblyName>
     <RootNamespace>Mimo.AppStoreServerLibrary</RootNamespace>
+    <IsAotCompatible>true</IsAotCompatible>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.IdentityModel.JsonWebTokens" Version="8.0.1" />

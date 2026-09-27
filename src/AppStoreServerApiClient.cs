@@ -3,6 +3,7 @@ using System.Net.Http.Headers;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization.Metadata;
 using System.Web;
 using Microsoft.IdentityModel.JsonWebTokens;
 using Microsoft.IdentityModel.Tokens;
@@ -43,7 +44,7 @@ public class AppStoreServerApiClient(
 
         string path = $"/inApps/v1/subscriptions/{transactionId}";
 
-        return this.MakeRequest<SubscriptionStatusResponse>(path, HttpMethod.Get)!;
+        return this.MakeRequest(path, HttpMethod.Get, AppStoreJsonContext.Default.SubscriptionStatusResponse)!;
     }
 
     /// <summary>
@@ -64,11 +65,12 @@ public class AppStoreServerApiClient(
 
         const string path = "/inApps/v1/notifications/history";
 
-        return this.MakeRequest<NotificationHistoryResponse>(
+        return this.MakeRequest(
             path,
             HttpMethod.Post,
+            AppStoreJsonContext.Default.NotificationHistoryResponse,
             queryParameters,
-            notificationHistoryRequest
+            JsonSerializer.Serialize(notificationHistoryRequest, AppStoreJsonContext.Default.NotificationHistoryRequest)
         );
     }
 
@@ -87,7 +89,12 @@ public class AppStoreServerApiClient(
 
         string path = $"/inApps/v2/history/{transactionId}";
 
-        return this.MakeRequest<TransactionHistoryResponse>(path, HttpMethod.Get, queryParameters);
+        return this.MakeRequest(
+            path,
+            HttpMethod.Get,
+            AppStoreJsonContext.Default.TransactionHistoryResponse,
+            queryParameters
+        );
     }
 
     /// <summary>
@@ -103,7 +110,13 @@ public class AppStoreServerApiClient(
     {
         string path = $"/inApps/v1/transactions/consumption/{transactionId}";
 
-        return this.MakeRequest<object?>(path, HttpMethod.Put, null, consumptionRequest, false);
+        return this.MakeRequest<object>(
+            path,
+            HttpMethod.Put,
+            null,
+            null,
+            JsonSerializer.Serialize(consumptionRequest, AppStoreJsonContext.Default.ConsumptionRequest)
+        );
     }
 
     /// <summary>
@@ -118,7 +131,7 @@ public class AppStoreServerApiClient(
     {
         string path = $"/inApps/v1/transactions/{transactionId}";
 
-        return this.MakeRequest<TransactionInfoResponse>(path, HttpMethod.Get);
+        return this.MakeRequest(path, HttpMethod.Get, AppStoreJsonContext.Default.TransactionInfoResponse);
     }
 
     /// <summary>
@@ -133,7 +146,7 @@ public class AppStoreServerApiClient(
     {
         string path = $"/inApps/v1/lookup/{orderId}";
 
-        return this.MakeRequest<OrderLookupResponse>(path, HttpMethod.Get)!;
+        return this.MakeRequest(path, HttpMethod.Get, AppStoreJsonContext.Default.OrderLookupResponse)!;
     }
 
     /// <summary>
@@ -167,9 +180,9 @@ public class AppStoreServerApiClient(
     private async Task<TReturn?> MakeRequest<TReturn>(
         string path,
         HttpMethod method,
+        JsonTypeInfo<TReturn>? returnTypeInfo,
         Dictionary<string, string>? queryParameters = null,
-        object? body = null,
-        bool fetchResponse = true
+        string? body = null
     )
         where TReturn : class
     {
@@ -189,53 +202,32 @@ public class AppStoreServerApiClient(
             builder.Query = query.ToString();
         }
 
-        var jsonOptions = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
-
         try
         {
-            HttpResponseMessage httpResponse;
-
-            if (method == HttpMethod.Get)
+            var request = new HttpRequestMessage(method, builder.Uri);
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+            if (body != null)
             {
-                var request = new HttpRequestMessage(HttpMethod.Get, builder.Uri);
-                request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
-                httpResponse = await this.httpClient.SendAsync(request);
+                request.Content = new StringContent(body, Encoding.UTF8, "application/json");
             }
-            else if (method == HttpMethod.Post)
-            {
-                var request = new HttpRequestMessage(HttpMethod.Post, builder.Uri);
-                request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
-                request.Content = new StringContent(
-                    JsonSerializer.Serialize(body, jsonOptions),
-                    Encoding.UTF8,
-                    "application/json"
-                );
-                httpResponse = await this.httpClient.SendAsync(request);
-            }
-            else if (method == HttpMethod.Put)
-            {
-                var request = new HttpRequestMessage(HttpMethod.Put, builder.Uri);
-                request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
-                request.Content = new StringContent(
-                    JsonSerializer.Serialize(body, jsonOptions),
-                    Encoding.UTF8,
-                    "application/json"
-                );
-                httpResponse = await this.httpClient.SendAsync(request);
-            }
-            else
-            {
-                throw new NotSupportedException($"Method {method} not supported");
-            }
+            HttpResponseMessage httpResponse = await this.httpClient.SendAsync(request);
 
             string responseContent = await httpResponse.Content.ReadAsStringAsync();
 
-            if (httpResponse.IsSuccessStatusCode)
+            ErrorResponse? error;
+            try
             {
-                return fetchResponse ? JsonSerializer.Deserialize<TReturn>(responseContent, jsonOptions) : null;
-            }
+                if (httpResponse.IsSuccessStatusCode)
+                {
+                    return returnTypeInfo != null ? JsonSerializer.Deserialize(responseContent, returnTypeInfo) : null;
+                }
 
-            var error = JsonSerializer.Deserialize<ErrorResponse>(responseContent, jsonOptions);
+                error = JsonSerializer.Deserialize(responseContent, AppStoreJsonContext.Default.ErrorResponse);
+            }
+            catch (JsonException ex)
+            {
+                throw new ApiException(httpResponse.StatusCode, null, ex);
+            }
 
             throw new ApiException(httpResponse.StatusCode, error);
         }
