@@ -1,4 +1,6 @@
+using System.Net;
 using Mimo.AppStoreServerLibrary;
+using Mimo.AppStoreServerLibrary.Exceptions;
 using Mimo.AppStoreServerLibrary.Models;
 using RichardSzalay.MockHttp;
 using Xunit;
@@ -195,5 +197,21 @@ public class AppStoreServerApiClientTest
             transaction => Assert.Equal("signed_transaction_one", transaction),
             transaction => Assert.Equal("signed_transaction_two", transaction)
         );
+    }
+
+    [Theory]
+    [InlineData(HttpStatusCode.Unauthorized, "")]
+    [InlineData(HttpStatusCode.BadGateway, "<html>Bad Gateway</html>")]
+    public async Task NonJsonErrorResponse_ThrowsApiException(HttpStatusCode statusCode, string body)
+    {
+        var mockHttp = new MockHttpMessageHandler();
+        mockHttp
+            .When("https://local-testing-base-url/inApps/v1/transactions/1234")
+            .Respond(statusCode, "text/html", body);
+
+        AppStoreServerApiClient client = GetAppStoreServerApiClient(mockHttp);
+        var exception = await Assert.ThrowsAsync<ApiException>(() => client.GetTransactionInfo("1234"));
+
+        Assert.Equal(statusCode, exception.HttpStatusCode);
     }
 }

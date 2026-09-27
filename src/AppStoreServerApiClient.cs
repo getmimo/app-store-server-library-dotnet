@@ -219,7 +219,15 @@ public class AppStoreServerApiClient(
                 return returnTypeInfo != null ? JsonSerializer.Deserialize(responseContent, returnTypeInfo) : null;
             }
 
-            var error = JsonSerializer.Deserialize(responseContent, AppStoreJsonContext.Default.ErrorResponse);
+            ErrorResponse? error;
+            try
+            {
+                error = JsonSerializer.Deserialize(responseContent, AppStoreJsonContext.Default.ErrorResponse);
+            }
+            catch (JsonException)
+            {
+                error = null;
+            }
 
             throw new ApiException(httpResponse.StatusCode, error);
         }
