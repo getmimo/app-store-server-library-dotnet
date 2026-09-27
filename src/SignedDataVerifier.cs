@@ -247,7 +247,12 @@ public class SignedDataVerifier(
         const string leafOid = "1.2.840.113635.100.6.11.1";
         const string intermediateOid = "1.2.840.113635.100.6.2.1";
 
-        if (chain.ChainElements.Count != 3 || chain.ChainElements[0].Certificate.Extensions[leafOid] == null)
+        if (chain.ChainElements.Count != 3)
+        {
+            throw new VerificationException($"Certificate chain has {chain.ChainElements.Count} elements, expected 3");
+        }
+
+        if (chain.ChainElements[0].Certificate.Extensions[leafOid] == null)
         {
             throw new VerificationException($"OID {leafOid} was not found on the signing certificate");
         }

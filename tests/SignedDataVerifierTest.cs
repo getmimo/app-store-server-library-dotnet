@@ -1,3 +1,5 @@
+using System.Security.Cryptography;
+using System.Security.Cryptography.X509Certificates;
 using System.Text.Json;
 using Microsoft.IdentityModel.Tokens;
 using Mimo.AppStoreServerLibrary;
@@ -320,5 +322,43 @@ public class SignedDataVerifierTest
         );
 
         Assert.Contains(oid, exception.Message);
+    }
+
+    [Fact]
+    public async Task VerifyAndDecode_LeafIssuedByRoot_Fails()
+    {
+        using var rootKey = ECDsa.Create(ECCurve.NamedCurves.nistP256);
+        var rootRequest = new CertificateRequest("CN=Root", rootKey, HashAlgorithmName.SHA256);
+        rootRequest.CertificateExtensions.Add(new X509BasicConstraintsExtension(true, false, 0, true));
+        using X509Certificate2 root = rootRequest.CreateSelfSigned(
+            DateTimeOffset.UtcNow.AddDays(-1),
+            DateTimeOffset.UtcNow.AddDays(1)
+        );
+
+        using var leafKey = ECDsa.Create(ECCurve.NamedCurves.nistP256);
+        var leafRequest = new CertificateRequest("CN=Leaf", leafKey, HashAlgorithmName.SHA256);
+        leafRequest.CertificateExtensions.Add(
+            new X509Extension("1.2.840.113635.100.6.11.1", new byte[] { 0x05, 0x00 }, false)
+        );
+        using X509Certificate2 leaf = leafRequest.Create(
+            root,
+            DateTimeOffset.UtcNow.AddHours(-1),
+            DateTimeOffset.UtcNow.AddHours(1),
+            new byte[] { 1 }
+        );
+
+        string rootBase64 = Convert.ToBase64String(root.RawData);
+        string header = JsonSerializer.Serialize(
+            new { alg = "ES256", x5c = new[] { Convert.ToBase64String(leaf.RawData), rootBase64, rootBase64 } }
+        );
+        string signedPayload = Base64UrlEncoder.Encode(header) + ".e30.AA";
+
+        var dataVerifier = new SignedDataVerifier(root.RawData, false, AppStoreEnvironment.Sandbox, BundleId);
+
+        var exception = await Assert.ThrowsAsync<VerificationException>(
+            () => dataVerifier.VerifyAndDecodeNotification(signedPayload)
+        );
+
+        Assert.Contains("Certificate chain has 2 elements", exception.Message);
     }
 }
