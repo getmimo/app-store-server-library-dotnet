@@ -202,7 +202,8 @@ public class AppStoreServerApiClientTest
     [Theory]
     [InlineData(HttpStatusCode.Unauthorized, "")]
     [InlineData(HttpStatusCode.BadGateway, "<html>Bad Gateway</html>")]
-    public async Task NonJsonErrorResponse_ThrowsApiException(HttpStatusCode statusCode, string body)
+    [InlineData(HttpStatusCode.OK, "<html>Maintenance</html>")]
+    public async Task NonJsonResponse_ThrowsApiException(HttpStatusCode statusCode, string body)
     {
         var mockHttp = new MockHttpMessageHandler();
         mockHttp
@@ -213,5 +214,8 @@ public class AppStoreServerApiClientTest
         var exception = await Assert.ThrowsAsync<ApiException>(() => client.GetTransactionInfo("1234"));
 
         Assert.Equal(statusCode, exception.HttpStatusCode);
+        Assert.Null(exception.ApiErrorCode);
+        Assert.Null(exception.ApiErrorMessage);
+        Assert.IsAssignableFrom<System.Text.Json.JsonException>(exception.InnerException);
     }
 }
